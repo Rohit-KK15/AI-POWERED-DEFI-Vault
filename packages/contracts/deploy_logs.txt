@@ -1,0 +1,51 @@
+=== DEPLOY & DEMO (MOCKS) ===
+
+Deployer: 0xA14eFDa593d08302917b35bB344Ac1aE38D5D4B4
+Mock LINK: 0x7e29D828d26c494D00984cbB025ea6Ce6E10EA15
+Mock WETH: 0x3ad421048E7c67E03eFBCedabeBBc86F45cA6d84
+Minted LINK/WETH to deployer.
+MockPriceOracle: 0x597D416766C277c53525A6b8C34Fa12C6BCC5066
+MockAavePoolB: 0x2f6991418254E09e3d3D00A993d5d1384bCe7acF
+Reserves init done.
+link aToken: 0xbBEb3b4715122dEB1c4cF1179f669BdF948dE77f
+weth aToken: 0x06C60473cc24Ade845AccA51f03C389B62e8f887
+MockSwapRouterV2: 0x74135651F61c571396E259E5C65ab5e9F23f4BF9
+MockProtocolDataProvider: 0xd901091975cB9fdF5C569Def273fD6991c1C9aa3
+Vault: 0xdc895245B08eEeD0865aB50F943123cbaeCC68f1
+StrategyRouter: 0xA4533fd30d43223a3FC3545768A0CD25FeE7581B
+Vault.router set.
+StrategyAaveV3: 0x195f5c2CF174Db7792C7B8f41dE136a17B8d8251
+StrategyAaveLeverage: 0xDcC53A899e0C9e694c134D7bE7d902379FEe17b8
+Strategies set in router
+Deposited to vault: 5000000000000000000
+Vault LINK balance: 5000000000000000000
+Vault totalAssets(): 5000000000000000000
+
+Calling router.rebalance() to allocate funds to strategies...
+router.rebalance() done.
+
+Simulating interest accrual...
+pool.accrue(token) called.
+Leverage strategy aToken underlying exposure: 4000002587519118536
+Aave strategy exposure: 1000000646879779634
+
+Calling router.harvestAll() ...
+harvestAll executed.
+
+Seeding swap router liquidity (LINK/WETH) ...
+swap seeded.
+
+Triggering deleverage via router.triggerDeleverage(...)
+triggerDeleverage executed.
+
+Withdraw test: withdrawing half of deployer shares ...
+Withdraw done.
+
+FINAL STATE:
+Vault totalAssets(): 0
+Vault LINK balance: 0
+StrategyLeverage.deposited: 1499998382800550915
+StrategyLeverage.borrowedWETH: 1000000000000000
+Pool user debt (lev): 1000000000000000
+
+=== SCRIPT COMPLETE ===
