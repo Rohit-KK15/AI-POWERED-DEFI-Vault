@@ -7,7 +7,7 @@ import {
   StrategyRouterABI
 } from "../../shared/abi";
 import { chain_read, chain_write, toStringBN } from "../../shared/utils/chain";
-import { format18 } from "../../shared/utils/bigint";
+import { format18, parseUnits } from "../../shared/utils/bigint";
 import { env } from "../../../env";
 
 /* -----------------------------------------------------
@@ -123,7 +123,7 @@ export const vault_deposit = createTool({
       env.VAULT_ADDRESS,
       VaultABI.abi,
       "deposit",
-      [amount] // value: LINK
+      [parseUnits(amount)] // value: LINK
     );
     return tx.toString();
   }

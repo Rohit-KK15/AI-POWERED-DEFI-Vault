@@ -1,7 +1,6 @@
 import { AgentBuilder } from "@iqai/adk";
 import { model } from "../env";
 import { getStrategySentinelAgent } from "./sub-agents/strategy-sentinel-agent/agent";
-import { StrategyAaveV3ABI } from "./shared/abi";
 
 export const defiAgent = async () => {
     const strategySentinalAgent = await getStrategySentinelAgent();
