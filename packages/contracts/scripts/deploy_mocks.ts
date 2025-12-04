@@ -93,7 +93,7 @@ async function main() {
   // 6) Deploy Vault + StrategyRouter + Strategies
   // -------------------------
   const Vault = await ethers.getContractFactory("Vault");
-  const vault = await Vault.deploy(await link.getAddress(), deployer.address, 1000); // 10% perf fee
+  const vault = await Vault.deploy(await link.getAddress(), deployer.address, 1000, 100); // 10% perf fee
   await vault.waitForDeployment();
   console.log("Vault:", await vault.getAddress());
 
