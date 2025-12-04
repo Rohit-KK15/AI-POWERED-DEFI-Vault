@@ -1,14 +1,19 @@
 import { AgentBuilder } from "@iqai/adk";
-import { model } from "../env";
+import { env } from "../env";
 import { getStrategySentinelAgent } from "./sub-agents/strategy-sentinel-agent/agent";
+import { getYieldSimulatorAgent } from "./sub-agents/yield-simulator-agent/agent";
 
-export const defiAgent = async () => {
+export const getRootAgent = async () => {
     const strategySentinalAgent = await getStrategySentinelAgent();
-    return await AgentBuilder
-        .create("DeFi_Portfolio_Agent")
-        .withDescription("Portfolio Analyser and Market Advisor")
-        .withInstruction("Analyses User's Potfolio and suggest actions")
-        .withModel(model)
-        .withSubAgents([strategySentinalAgent])
+    const yieldSimulatorAgent = await getYieldSimulatorAgent();
+    return AgentBuilder
+        .create("RootAgent")
+        .withDescription("AI Agent that monitors and manages the Funds and Strategies of the Vault.")
+        .withInstruction(`
+            Use the sub-agent Strategy Sentinel Agent for getting vault, strategies, and users' stats, and perform deposit, withdraw, rebalance, harvest, auto_deleverage.
+            Use the sub-agent Yield Simulator Agent for accruing or generating yeild to the Pool.
+            `)
+        .withModel(env.LLM_MODEL)
+        .withSubAgents([strategySentinalAgent, yieldSimulatorAgent])
         .build();
 }
