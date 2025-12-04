@@ -126,7 +126,8 @@ async function main() {
     await pool.getAddress(),
     await pdp.getAddress(),
     await swap.getAddress(),
-    await weth.getAddress()
+    await weth.getAddress(),
+    await oracle.getAddress()
   );
   await stratLev.waitForDeployment();
   console.log("StrategyAaveLeverage:", await stratLev.getAddress());
@@ -157,19 +158,49 @@ async function main() {
   // -------------------------
   // 10) Simulate interest accrual (advance time / accrue)
   // -------------------------
+  console.log("\n--- Before Accrual ---");
+  let levBalBefore = 0n;
+  let aaveBalBefore = 0n;
+  try {
+    levBalBefore = await stratLev.strategyBalance();
+    aaveBalBefore = await stratAave.strategyBalance();
+    console.log("Leverage strategy balance (before):", levBalBefore.toString());
+    console.log("Aave strategy balance (before):", aaveBalBefore.toString());
+  } catch (e) {
+    console.warn("Could not read strategyBalance() before accrual", e);
+  }
+
   console.log("\nSimulating interest accrual...");
+  // Accrue interest - this updates the aToken exchange rate
   await (await pool.accrue(await link.getAddress())).wait();
   await (await pool.accrue(await weth.getAddress())).wait();
   console.log("pool.accrue(token) called.");
 
-  // read strategy exposures
+  // read strategy exposures after accrual
+  console.log("\n--- After Accrual ---");
   try {
-    const levBal = await stratLev.strategyBalance();
-    const aaveBal = await stratAave.strategyBalance();
-    console.log("Leverage strategy aToken underlying exposure:", levBal.toString());
-    console.log("Aave strategy exposure:", aaveBal.toString());
+    const levBalAfter = await stratLev.strategyBalance();
+    const aaveBalAfter = await stratAave.strategyBalance();
+    console.log("Leverage strategy balance (after):", levBalAfter.toString());
+    console.log("Aave strategy balance (after):", aaveBalAfter.toString());
+    
+    // Show the increase
+    if (levBalBefore > 0n) {
+      const levIncrease = levBalAfter - levBalBefore;
+      console.log(`Leverage strategy increase: +${levIncrease.toString()} (${ethers.formatUnits(levIncrease, 18)} LINK)`);
+    }
+    if (aaveBalBefore > 0n) {
+      const aaveIncrease = aaveBalAfter - aaveBalBefore;
+      console.log(`Aave strategy increase: +${aaveIncrease.toString()} (${ethers.formatUnits(aaveIncrease, 18)} LINK)`);
+    }
+    
+    // Show exchange rate
+    const linkAToken = (await pool.getReserveTokensAddresses(await link.getAddress()))[0];
+    const linkATokenContract = await ethers.getContractAt("MockAToken", linkAToken);
+    const exchangeRate = await linkATokenContract.exchangeRate();
+    console.log("LINK aToken exchange rate:", exchangeRate.toString(), `(${ethers.formatUnits(exchangeRate, 18)})`);
   } catch (e) {
-    console.warn("Could not read strategyBalance()", e);
+    console.warn("Could not read strategyBalance() after accrual", e);
   }
 
   // -------------------------
@@ -225,18 +256,47 @@ async function main() {
   // -------------------------
   // 15) Final status outputs
   // -------------------------
-  console.log("\nFINAL STATE:");
+  console.log("\n=== FINAL STATE ===");
   console.log("Vault totalAssets():", (await vault.totalAssets()).toString());
   console.log("Vault LINK balance:", (await link.balanceOf(await vault.getAddress())).toString());
+  console.log("Vault totalSupply (shares):", (await vault.totalSupply()).toString());
+  
+  const deployerShares = await vault.balanceOf(deployer.address);
+  console.log("Deployer vault shares:", deployerShares.toString());
+  if (deployerShares > 0n) {
+    const deployerAssets = await vault.convertToAssets(deployerShares);
+    console.log("Deployer withdrawable assets:", deployerAssets.toString());
+  }
+  
+  console.log("\n--- Strategy States ---");
   console.log("StrategyLeverage.deposited:", (await stratLev.deposited()).toString());
   console.log("StrategyLeverage.borrowedWETH:", (await stratLev.borrowedWETH()).toString());
-
+  console.log("StrategyLeverage.strategyBalance():", (await stratLev.strategyBalance()).toString());
+  console.log("StrategyAaveV3.strategyBalance():", (await stratAave.strategyBalance()).toString());
+  
   // pool.getUserDebt(user, token) exists on MockAavePoolB
   try {
     const poolDebt = await pool.getUserDebt(await stratLev.getAddress(), await weth.getAddress());
     console.log("Pool user debt (lev):", poolDebt.toString());
   } catch (e) {
     console.warn("Could not fetch pool debt:", e);
+  }
+
+  // Portfolio state
+  try {
+    const portfolioState = await router.getPortfolioState();
+    console.log("\n--- Portfolio Allocation ---");
+    for (let i = 0; i < portfolioState[0].length; i++) {
+      const stratAddr = portfolioState[0][i];
+      const balance = portfolioState[1][i];
+      const targetBps = portfolioState[2][i];
+      const stratName = stratAddr.toLowerCase() === (await stratLev.getAddress()).toLowerCase() ? "Leverage" : "Aave";
+      console.log(`${stratName} Strategy (${stratAddr.slice(0, 10)}...):`);
+      console.log(`  Balance: ${balance.toString()}`);
+      console.log(`  Target: ${targetBps.toString()} bps (${Number(targetBps) / 100}%)`);
+    }
+  } catch (e) {
+    console.warn("Could not fetch portfolio state:", e);
   }
 
   console.log("\n=== SCRIPT COMPLETE ===\n");

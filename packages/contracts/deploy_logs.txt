@@ -1,21 +1,21 @@
 === DEPLOY & DEMO (MOCKS) ===
 
 Deployer: 0xA14eFDa593d08302917b35bB344Ac1aE38D5D4B4
-Mock LINK: 0x7e29D828d26c494D00984cbB025ea6Ce6E10EA15
-Mock WETH: 0x3ad421048E7c67E03eFBCedabeBBc86F45cA6d84
+Mock LINK: 0x4B97168A749802cf712185A6aD3c8AaA59f64B46
+Mock WETH: 0xd7d3988e0842ABCE30Ee46e6Be789eC2C6221436
 Minted LINK/WETH to deployer.
-MockPriceOracle: 0x597D416766C277c53525A6b8C34Fa12C6BCC5066
-MockAavePoolB: 0x2f6991418254E09e3d3D00A993d5d1384bCe7acF
+MockPriceOracle: 0x481C554b700915674d722682f44217666F43b3Af
+MockAavePoolB: 0xC16E211b4e52Cf6765af38be313EF14f8A93b40C
 Reserves init done.
-link aToken: 0xbBEb3b4715122dEB1c4cF1179f669BdF948dE77f
-weth aToken: 0x06C60473cc24Ade845AccA51f03C389B62e8f887
-MockSwapRouterV2: 0x74135651F61c571396E259E5C65ab5e9F23f4BF9
-MockProtocolDataProvider: 0xd901091975cB9fdF5C569Def273fD6991c1C9aa3
-Vault: 0xdc895245B08eEeD0865aB50F943123cbaeCC68f1
-StrategyRouter: 0xA4533fd30d43223a3FC3545768A0CD25FeE7581B
+link aToken: 0x284Af52133c7C68Ba1d5352F1b2eC57C1eA304a5
+weth aToken: 0xf1eF16d595DEdc64EF87D0acdC78d24995007823
+MockSwapRouterV2: 0xa5187341743955c5387ED874F034be84493Fd518
+MockProtocolDataProvider: 0xCf714DD55d3987A4e7DbE89D262D0B44D9063fAA
+Vault: 0x20351bf1B813aaB1F9418e6B383aBa29F25c9fBF
+StrategyRouter: 0x032010c5B8B6C1AA27B3bDf4aD757F9394D3DB5C
 Vault.router set.
-StrategyAaveV3: 0x195f5c2CF174Db7792C7B8f41dE136a17B8d8251
-StrategyAaveLeverage: 0xDcC53A899e0C9e694c134D7bE7d902379FEe17b8
+StrategyAaveV3: 0xbfa4b0204eb90240b18030207Bf1a310B39125c5
+StrategyAaveLeverage: 0xF55375664761d907f5365da4bf7A20BE603F1E9d
 Strategies set in router
 Deposited to vault: 5000000000000000000
 Vault LINK balance: 5000000000000000000
@@ -24,10 +24,19 @@ Vault totalAssets(): 5000000000000000000
 Calling router.rebalance() to allocate funds to strategies...
 router.rebalance() done.
 
+--- Before Accrual ---
+Leverage strategy balance (before): 3900002587519025872
+Aave strategy balance (before): 1000000646879756468
+
 Simulating interest accrual...
 pool.accrue(token) called.
-Leverage strategy aToken underlying exposure: 4000002587519118536
-Aave strategy exposure: 1000000646879779634
+
+--- After Accrual ---
+Leverage strategy balance (after): 3900002739726125848
+Aave strategy balance (after): 1000000684931531462
+Leverage strategy increase: +152207099976 (0.000000152207099976 LINK)
+Aave strategy increase: +38051774994 (0.000000038051774994 LINK)
+LINK aToken exchange rate: 1000000684931531462 (1.000000684931531462)
 
 Calling router.harvestAll() ...
 harvestAll executed.
@@ -41,11 +50,26 @@ triggerDeleverage executed.
 Withdraw test: withdrawing half of deployer shares ...
 Withdraw done.
 
-FINAL STATE:
+=== FINAL STATE ===
 Vault totalAssets(): 0
 Vault LINK balance: 0
-StrategyLeverage.deposited: 1499998382800550915
+Vault totalSupply (shares): 2500000000000000000
+Deployer vault shares: 2500000000000000000
+Deployer withdrawable assets: 2450000090560769601
+
+--- Strategy States ---
+StrategyLeverage.deposited: 1549997578576293988
 StrategyLeverage.borrowedWETH: 1000000000000000
+StrategyLeverage.strategyBalance(): 1449999063163238567
+StrategyAaveV3.strategyBalance(): 1000001027397531034
 Pool user debt (lev): 1000000000000000
+
+--- Portfolio Allocation ---
+Leverage Strategy (0xF5537566...):
+  Balance: 1449999063163238567
+  Target: 8000 bps (80%)
+Aave Strategy (0xbfa4b020...):
+  Balance: 1000001027397531034
+  Target: 2000 bps (20%)
 
 === SCRIPT COMPLETE ===
