@@ -20,8 +20,12 @@ contract Vault is ERC20, Ownable {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable asset;
-    uint256 public performanceFeeBps; // e.g., 1000 = 10%
+    uint256 public performanceFeeBps;
     address public feeRecipient;
+    uint256 public withdrawFeeBps;
+    mapping(address => uint256) public netDeposited;
+    mapping(address => uint256) public totalWithdrawn;
+
 
     event Deposit(address indexed user, uint256 amount, uint256 shares);
     event Withdraw(address indexed user, uint256 amount, uint256 shares);
@@ -29,11 +33,13 @@ contract Vault is ERC20, Ownable {
     constructor(
         address _asset,
         address _feeRecipient,
-        uint256 _bps
+        uint256 _performanceBps,
+        uint256 _withdrawFeeBps
     ) ERC20("Vault Share Token", "VST") Ownable(msg.sender) {
         asset = IERC20(_asset);
         feeRecipient = _feeRecipient;
-        performanceFeeBps = _bps;
+        performanceFeeBps = _performanceBps;
+        withdrawFeeBps = _withdrawFeeBps;
     }
 
     function totalAssets() public view returns (uint256) {
@@ -58,49 +64,89 @@ contract Vault is ERC20, Ownable {
         return s == 0 ? shares : (shares * totalManagedAssets()) / s;
     }
 
+    function userGrowth(address user) public view returns (int256) {
+        uint256 deposited = netDeposited[user];
+        if (deposited == 0) return 0;
+
+        uint256 withdrawn = totalWithdrawn[user];
+        uint256 currentValue = convertToAssets(balanceOf(user));
+
+        int256 pnl = int256(currentValue + withdrawn) - int256(deposited);
+        return pnl;
+    }
+
+    function userGrowthPercent(address user) external view returns (int256) {
+        uint256 deposited = netDeposited[user];
+        if (deposited == 0) return 0;
+
+        int256 pnl = userGrowth(user);
+
+        return (pnl * 1e18) / int256(deposited);
+    }
+
+
+
     function deposit(uint256 amount) external returns (uint256) {
         uint256 shares = convertToShares(amount);
+
         asset.safeTransferFrom(msg.sender, address(this), amount);
         _mint(msg.sender, shares);
+
+        // Track deposit history
+        netDeposited[msg.sender] += amount;
+
         emit Deposit(msg.sender, amount, shares);
         return shares;
     }
+
 
     function withdraw(uint256 shares) external returns (uint256 assetsOut) {
         require(shares > 0, "zero shares");
         require(balanceOf(msg.sender) >= shares, "not enough shares");
 
-        // 1. Calculate assets owed
+        // 1. Convert shares → assets
         assetsOut = convertToAssets(shares);
         require(assetsOut > 0, "zero assets out");
 
-        // 2. Burn shares
+        // 2. Burn user's shares
         _burn(msg.sender, shares);
 
-        // 3. Check vault liquidity
+        // 3. Pull assets from strategies if needed
         uint256 vaultBal = asset.balanceOf(address(this));
 
         if (vaultBal < assetsOut) {
-            // 4. Pull from strategies via router
             uint256 needed = assetsOut - vaultBal;
-
             require(router != address(0), "router not set");
 
-            // router should pull funds → strategies must transfer back to vault
             IStrategyRouter(router).withdrawFromStrategies(needed);
-
-            uint256 newVaultBal = asset.balanceOf(address(this));
             require(
-                newVaultBal >= assetsOut,
+                asset.balanceOf(address(this)) >= assetsOut,
                 "not enough liquidity after pull"
             );
         }
 
-        // 5. Transfer assets to user
-        asset.safeTransfer(msg.sender, assetsOut);
+        // ---------------------------------------------
+        // 4. APPLY WITHDRAWAL FEE
+        // ---------------------------------------------
+        uint256 fee = (assetsOut * withdrawFeeBps) / 10000;
+        uint256 userAmount = assetsOut - fee;
 
-        emit Withdraw(msg.sender, assetsOut, shares);
+        if (fee > 0) {
+            asset.safeTransfer(feeRecipient, fee);
+        }
+
+        // ---------------------------------------------
+        // 5. Send final amount to user
+        // ---------------------------------------------
+        asset.safeTransfer(msg.sender, userAmount);
+
+        // Track lifetime withdrawals for growth calculation
+        totalWithdrawn[msg.sender] += userAmount;
+
+        emit Withdraw(msg.sender, userAmount, shares);
+        return userAmount;
     }
+
 
     // ─────────────────────────────────────────────
     //   STRATEGY ROUTER ACCESS (ONLY ROUTER)
