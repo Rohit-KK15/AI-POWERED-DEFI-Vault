@@ -52,3 +52,5 @@ To connect the frontend to your agent backend:
 - Wagmi (Web3)
 - Viem (Ethereum library)
 
+
+
