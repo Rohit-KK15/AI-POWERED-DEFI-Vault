@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import { defiAgent } from "./agents/agent";
+import { getRootAgent } from "./agents/agent";
 
 dotenv.config();
 
@@ -14,7 +14,7 @@ dotenv.config();
 async function main() {
 	const questions = ["how is weather in london?", "tell me a random joke"];
 
-	const { runner } = await defiAgent();
+	const { runner } = await getRootAgent();
 
 	for (const question of questions) {
 		console.log(`📝 Question: ${question}`);
