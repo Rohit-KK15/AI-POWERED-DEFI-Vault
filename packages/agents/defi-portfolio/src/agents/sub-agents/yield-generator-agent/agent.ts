@@ -2,7 +2,7 @@ import { LlmAgent } from "@iqai/adk";
 import { yield_generator } from "./tools";
 import { env } from "../../../env";
 
-export async function getYieldSimulatorAgent() {
+export async function getYieldGeneratorAgent() {
     return new LlmAgent({
         name: "YieldSimulatorAgent",
         description: "Generating or Accruing Yield to the Pool.",

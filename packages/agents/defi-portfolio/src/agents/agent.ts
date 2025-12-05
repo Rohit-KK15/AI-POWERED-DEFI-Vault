@@ -1,11 +1,11 @@
 import { AgentBuilder } from "@iqai/adk";
 import { env } from "../env";
 import { getStrategySentinelAgent } from "./sub-agents/strategy-sentinel-agent/agent";
-import { getYieldSimulatorAgent } from "./sub-agents/yield-simulator-agent/agent";
+import { getYieldGeneratorAgent } from "./sub-agents/yield-generator-agent/agent";
 
 export const getRootAgent = async () => {
     const strategySentinalAgent = await getStrategySentinelAgent();
-    const yieldSimulatorAgent = await getYieldSimulatorAgent();
+    const yieldSimulatorAgent = await getYieldGeneratorAgent();
     return AgentBuilder
         .create("RootAgent")
         .withDescription("AI Agent that monitors and manages the Funds and Strategies of the Vault.")
