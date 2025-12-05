@@ -176,7 +176,7 @@ cd packages/frontend
 
 ## 💻 Tech Stack
 
-- **Smart Contracts**: Solidity, Hardhat, OpenZeppelin, Uniswap V3
+- **Smart Contracts**: Solidity, Hardhat, OpenZeppelin
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Wagmi, Viem
 - **AI Agents**: ADK-TS (Agent Development Kit), Node.js, Express
 
