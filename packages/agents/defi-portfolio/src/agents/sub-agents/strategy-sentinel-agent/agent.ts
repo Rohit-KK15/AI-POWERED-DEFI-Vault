@@ -13,10 +13,11 @@ import {
     auto_deleverage,
     get_token_prices,
     get_leverage_strategy_state,
+    get_vault_apy,
     update_strategy_target_weights,
     toggle_leverage_strategy_pause,
     update_leverage_params
- } from "./tools";
+} from "./tools";
 
 export async function getStrategySentinelAgent() {
     return new LlmAgent({
@@ -171,6 +172,7 @@ export async function getStrategySentinelAgent() {
             auto_deleverage,
             get_token_prices,
             get_leverage_strategy_state,
+            get_vault_apy,
             update_strategy_target_weights,
             toggle_leverage_strategy_pause,
             update_leverage_params
