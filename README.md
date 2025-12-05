@@ -182,4 +182,4 @@ cd packages/frontend
 
 ## 📄 License
 
-[ISC](LICENSE)
+[MIT](LICENSE)
