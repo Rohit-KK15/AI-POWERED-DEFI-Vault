@@ -1,14 +1,16 @@
 {
-  "name": "defi-portfolio",
+  "name": "MetaVault-AI",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    
+  ],
+  "author": "Rohit_KK",
+  "license": "MIT",
   "packageManager": "pnpm@10.18.3",
   "devDependencies": {
     "@types/react": "^19.2.6",
