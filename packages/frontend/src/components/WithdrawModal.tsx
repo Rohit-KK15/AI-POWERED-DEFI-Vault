@@ -22,6 +22,21 @@ export function WithdrawModal({ onClose }: WithdrawModalProps) {
     args: address ? [address] : undefined,
   });
 
+  // Get withdraw fee from vault
+  const { data: withdrawFeeBps } = useReadContract({
+    address: CONTRACTS.VAULT,
+    abi: VAULT_ABI,
+    functionName: "withdrawFeeBps",
+  });
+
+  // Convert shares to assets to show withdrawal amount
+  const { data: assetsOut } = useReadContract({
+    address: CONTRACTS.VAULT,
+    abi: VAULT_ABI,
+    functionName: "convertToAssets",
+    args: amount ? [parseTokenAmount(amount, 18)] : undefined,
+  });
+
   const { writeContract: withdraw, data: withdrawHash } = useWriteContract();
 
   const { isLoading: isWithdrawing } = useWaitForTransactionReceipt({
@@ -45,6 +60,14 @@ export function WithdrawModal({ onClose }: WithdrawModalProps) {
 
   const sharesBigInt = amount ? parseTokenAmount(amount, 18) : BigInt(0);
   const hasShares = userShares ? sharesBigInt <= userShares : false;
+
+  // Calculate fee and amount to receive
+  const withdrawFee = withdrawFeeBps && assetsOut
+    ? (assetsOut * withdrawFeeBps) / BigInt(10000)
+    : BigInt(0);
+  const amountToReceive = assetsOut && withdrawFee
+    ? assetsOut - withdrawFee
+    : BigInt(0);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -72,6 +95,25 @@ export function WithdrawModal({ onClose }: WithdrawModalProps) {
               </p>
             )}
           </div>
+
+          {/* Fee Breakdown */}
+          {amount && assetsOut && (
+            <div className="space-y-2 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Withdrawal Amount:</span>
+                <span className="text-white">{formatNumber(formatTokenAmount(assetsOut))} LINK</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Withdraw Fee (1%):</span>
+                <span className="text-red-400">-{formatNumber(formatTokenAmount(withdrawFee))} LINK</span>
+              </div>
+              <div className="h-px bg-gray-700 my-2" />
+              <div className="flex justify-between text-sm font-semibold">
+                <span className="text-gray-300">You Will Receive:</span>
+                <span className="text-green-400">{formatNumber(formatTokenAmount(amountToReceive))} LINK</span>
+              </div>
+            </div>
+          )}
 
           {!hasShares && amount && (
             <p className="text-sm text-red-400">Insufficient shares</p>
