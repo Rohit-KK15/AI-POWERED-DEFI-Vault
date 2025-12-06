@@ -135,6 +135,8 @@ app.post("/chat", async (req, res) => {
 
     let assistantReply = reply;
 
+    let step = '';
+
     // Try to extract JSON from the LLM response
     const jsonMatch = reply.match(/\{[\s\S]*\}/);
 
@@ -146,6 +148,8 @@ app.post("/chat", async (req, res) => {
         if (parsed.reply) assistantReply = parsed.reply;
 
         if (parsed.unsignedTx) unsignedTx = parsed.unsignedTx;
+
+        if(parsed.step) step = parsed.step;
       } catch (e) {
         console.log("Failed to parse JSON from agent:", e);
       }
@@ -157,6 +161,7 @@ app.post("/chat", async (req, res) => {
       reply: assistantReply,
       history: session.history,
       unsignedTx, // send unsigned tx to UI
+      step: step
     });
 
   } catch (err: any) {
