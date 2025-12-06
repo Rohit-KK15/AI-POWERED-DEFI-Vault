@@ -196,9 +196,15 @@ export function VaultDashboard() {
   }
 
   const totalAssetsFormatted = totalAssets ? formatTokenAmount(totalAssets) : "0";
-  const totalManagedFormatted = totalManaged ? formatTokenAmount(totalManaged) : "0";
+  // Reduce by 10% to account for performance fees (UI display only)
+  const totalManagedFormatted = totalManaged
+    ? formatTokenAmount((totalManaged * BigInt(90)) / BigInt(100))
+    : "0";
   const userSharesFormatted = userShares ? formatTokenAmount(userShares, 18) : "0";
-  const userAssetsFormatted = userAssets ? formatTokenAmount(userAssets) : "0";
+  // Reduce by 10% to account for performance fees (UI display only)
+  const userAssetsFormatted = userAssets
+    ? formatTokenAmount((userAssets * BigInt(90)) / BigInt(100))
+    : "0";
 
   return (
     <div className="space-y-8">
@@ -228,6 +234,7 @@ export function VaultDashboard() {
             </div>
           </div>
           <p className="text-3xl font-bold text-white">{formatNumber(totalManagedFormatted)} <span className="text-sm text-gray-500 font-normal">LINK</span></p>
+          <p className="text-xs text-gray-500 mt-1">Net of 10% performance fee</p>
         </div>
 
         <div className="glass-card p-6 rounded-2xl relative overflow-hidden group">
@@ -254,6 +261,7 @@ export function VaultDashboard() {
             </div>
           </div>
           <p className="text-3xl font-bold text-white">{formatNumber(userAssetsFormatted)} <span className="text-sm text-gray-500 font-normal">LINK</span></p>
+          <p className="text-xs text-gray-500 mt-1">Net of 10% performance fee</p>
         </div>
 
         <div className="glass-card p-6 rounded-2xl relative overflow-hidden group">
