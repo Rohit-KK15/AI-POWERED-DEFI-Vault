@@ -62,3 +62,33 @@ body {
     border-color: rgba(255, 255, 255, 0.2);
   }
 }
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 10%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.28s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out forwards;
+}
