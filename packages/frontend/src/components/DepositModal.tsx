@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { CONTRACTS, VAULT_ABI, ERC20_ABI, isValidAddress } from "@/lib/contracts";
 import { parseTokenAmount, formatTokenAmount, formatNumber } from "@/lib/utils";
@@ -39,13 +39,16 @@ export function DepositModal({ onClose }: DepositModalProps) {
     hash: approveHash,
   });
 
-  const { isLoading: isDepositing } = useWaitForTransactionReceipt({
+  const { isLoading: isDepositing, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({
     hash: depositHash,
-    onSuccess: () => {
+  });
+
+  useEffect(() => {
+    if (isDepositSuccess) {
       setAmount("");
       onClose();
-    },
-  });
+    }
+  }, [isDepositSuccess, onClose]);
 
   const handleApprove = () => {
     if (!amount) return;

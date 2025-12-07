@@ -77,10 +77,10 @@ export function AgentChat() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      if (data.unsignedTx && walletClient ) {
+      if (data.unsignedTx && walletClient) {
         console.log("Unsigned TX received from agent:", data.unsignedTx);
         const txHash = await walletClient.sendTransaction(data.unsignedTx);
-        
+
         const followup = await fetch("/api/agent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -90,9 +90,9 @@ export function AgentChat() {
             wallet: address
           }),
         });
-    
+
         const followData = await followup.json();
-    
+
         // Render the agent's deposit message
         setMessages(prev => [
           ...prev,
@@ -102,11 +102,11 @@ export function AgentChat() {
             timestamp: new Date(),
           }
         ]);
-    
+
         // If this follow-up ALSO returns a tx → send deposit transaction
         if (followData.unsignedTx) {
           const txHash = await walletClient.sendTransaction(followData.unsignedTx);
-    
+
           setMessages(prev => [
             ...prev,
             {
@@ -137,7 +137,7 @@ export function AgentChat() {
           <Bot className="w-8 h-8 text-white" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-medium text-white">Welcome to Strategy Agent</h2>
+          <h2 className="text-xl font-medium text-white">Welcome to MetaVault AI Assistant</h2>
           <p className="text-gray-400 max-w-md">
             Connect your wallet to start chatting.
           </p>
@@ -151,7 +151,7 @@ export function AgentChat() {
       {/* Header - Minimal */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-white/5 bg-[#0A0A12]/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-200">Strategy Agent 1.0</span>
+          <span className="text-sm font-medium text-gray-200">MetaVault AI Assistant 1.0</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Add any header actions here if needed */}
