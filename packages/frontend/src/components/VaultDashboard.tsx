@@ -7,13 +7,16 @@ import { useState, useEffect } from "react";
 import { DepositModal } from "./DepositModal";
 import { WithdrawModal } from "./WithdrawModal";
 import { StrategyCard } from "./StrategyCard";
-import { ActivityCard } from "./ActivityCard";
-import { TrendingUp, DollarSign, PieChart, Wallet, ArrowRightLeft, Sprout, Percent } from "lucide-react";
+// import { ActivityCard } from "./ActivityCard"; // Removed
+import { DepositorsList } from "./DepositorsList";
+import { TrendingUp, DollarSign, PieChart, Wallet, ArrowRightLeft, Percent, Copy, Check } from "lucide-react";
+import { formatUnits } from "viem";
 
 export function VaultDashboard() {
   const { address, isConnected } = useAccount();
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [apyData, setApyData] = useState<{
     apy: number;
     readable: string;
@@ -92,6 +95,14 @@ export function VaultDashboard() {
     query: { enabled: isConnected && !!userShares && hasValidContracts, refetchInterval: 3000 },
   });
 
+  const { data: growthPercent } = useReadContract({
+    address: CONTRACTS.VAULT,
+    abi: VAULT_ABI,
+    functionName: "userGrowthPercent",
+    args: address ? [address] : undefined,
+    query: { enabled: isConnected && !!address && hasValidContracts, refetchInterval: 5000 },
+  });
+
   // Read portfolio state
   const { data: portfolioState, refetch: refetchPortfolio } = useReadContract({
     address: CONTRACTS.ROUTER,
@@ -139,28 +150,11 @@ export function VaultDashboard() {
   });
 
   // Write contracts
-  const { writeContract: writeRouter, isPending: isRouterPending } = useWriteContract();
   const { writeContract: writeToken, data: mintHash, isPending: isMinting } = useWriteContract();
 
   const { isLoading: isMintConfirming } = useWaitForTransactionReceipt({
     hash: mintHash,
   });
-
-  const handleRebalance = () => {
-    writeRouter({
-      address: CONTRACTS.ROUTER,
-      abi: ROUTER_ABI,
-      functionName: "rebalance",
-    });
-  };
-
-  const handleHarvest = () => {
-    writeRouter({
-      address: CONTRACTS.ROUTER,
-      abi: ROUTER_ABI,
-      functionName: "harvestAll",
-    });
-  };
 
   const handleMintLink = () => {
     if (!address) return;
@@ -172,6 +166,22 @@ export function VaultDashboard() {
       functionName: "mint",
       args: [address, amount],
     });
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(CONTRACTS.LINK);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const getStrategyName = (strategyAddress: string) => {
+    if (strategyAddress.toLowerCase() === CONTRACTS.STRATEGY_AAVE.toLowerCase()) {
+      return "Aave Strategy";
+    }
+    if (strategyAddress.toLowerCase() === CONTRACTS.STRATEGY_LEVERAGE.toLowerCase()) {
+      return "Leverage Strategy";
+    }
+    return "Unknown Strategy";
   };
 
   if (!isConnected) {
@@ -206,6 +216,10 @@ export function VaultDashboard() {
     ? formatTokenAmount((userAssets))
     : "0";
 
+  const growthPercentFormatted = growthPercent ? parseFloat(formatUnits(growthPercent, 18)).toFixed(2) : "0.00";
+  const growthColor = growthPercent && growthPercent >= 0n ? "text-green-400" : "text-red-400";
+  const growthSign = growthPercent && growthPercent > 0n ? "+" : ""; // Only show + for strict positive, negative handled by number
+
   return (
     <div className="space-y-8">
       {/* Stats Grid */}
@@ -215,7 +229,7 @@ export function VaultDashboard() {
             <DollarSign className="w-24 h-24 text-blue-500" />
           </div>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-400">Total Assets</p>
+            <p className="text-sm font-medium text-gray-400">IDLE Assets</p>
             <div className="p-2 bg-blue-500/10 rounded-lg">
               <DollarSign className="w-5 h-5 text-blue-400" />
             </div>
@@ -259,7 +273,12 @@ export function VaultDashboard() {
               <Wallet className="w-5 h-5 text-yellow-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{formatNumber(userAssetsFormatted)} <span className="text-sm text-gray-500 font-normal">LINK</span></p>
+          <div>
+            <p className="text-3xl font-bold text-white">{formatNumber(userAssetsFormatted)} <span className="text-sm text-gray-500 font-normal">LINK</span></p>
+            <p className={`text-sm mt-1 font-medium ${growthColor}`}>
+              {growthSign}{growthPercentFormatted}%
+            </p>
+          </div>
         </div>
 
         <div className="glass-card p-6 rounded-2xl relative overflow-hidden group">
@@ -319,7 +338,7 @@ export function VaultDashboard() {
               </button>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 onClick={handleMintLink}
                 disabled={isMinting || isMintConfirming || !address}
@@ -330,21 +349,11 @@ export function VaultDashboard() {
               </button>
 
               <button
-                onClick={handleRebalance}
-                disabled={isRouterPending}
-                className="px-4 py-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                onClick={handleCopyLink}
+                className="px-4 py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
               >
-                <ArrowRightLeft size={16} />
-                {isRouterPending ? "Rebalancing..." : "Rebalance"}
-              </button>
-
-              <button
-                onClick={handleHarvest}
-                disabled={isRouterPending}
-                className="px-4 py-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Sprout size={16} />
-                {isRouterPending ? "Harvesting..." : "Harvest All"}
+                {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+                {linkCopied ? "Copied LINK Address" : "Copy LINK Address"}
               </button>
             </div>
           </div>
@@ -358,6 +367,7 @@ export function VaultDashboard() {
                   <StrategyCard
                     key={strategy}
                     strategy={strategy}
+                    name={getStrategyName(strategy)}
                     balance={portfolioState[1][index]}
                     target={portfolioState[2][index]}
                     totalManaged={totalManaged || BigInt(0)}
@@ -372,9 +382,9 @@ export function VaultDashboard() {
           </div>
         </div>
 
-        {/* Right Column: Activity */}
+        {/* Right Column: Depositors List */}
         <div className="lg:col-span-1">
-          <ActivityCard />
+          <DepositorsList />
         </div>
       </div>
 
