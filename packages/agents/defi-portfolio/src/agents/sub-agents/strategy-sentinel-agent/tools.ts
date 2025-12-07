@@ -1,9 +1,9 @@
 import { createTool, ToolContext } from "@iqai/adk";
 import { z } from "zod";
-import { 
-  StrategyLeverageABI, 
-  StrategyAaveV3ABI, 
-  VaultABI, 
+import {
+  StrategyLeverageABI,
+  StrategyAaveV3ABI,
+  VaultABI,
   StrategyRouterABI,
   OracleABI
 } from "../../shared/abi";
@@ -129,7 +129,7 @@ export const get_token_prices = createTool({
         chainlink?: { usd: number; usd_24h_change?: number };
         weth?: { usd: number; usd_24h_change?: number };
       };
-      
+
       // Extract prices in USD
       const linkPriceUSD = data.chainlink?.usd || 0;
       const wethPriceUSD = data.weth?.usd || 0;
@@ -173,14 +173,14 @@ export const get_token_prices = createTool({
         const altResponse = await fetch(
           "https://api.coincap.io/v2/assets?ids=chainlink,ethereum"
         );
-        
+
         if (altResponse.ok) {
           const altData = await altResponse.json() as {
             data?: Array<{ id: string; priceUsd: string }>;
           };
           const linkData = altData.data?.find((a) => a.id === "chainlink");
           const ethData = altData.data?.find((a) => a.id === "ethereum");
-          
+
           if (linkData && ethData) {
             const linkPriceUSD = parseFloat(linkData.priceUsd);
             const wethPriceUSD = parseFloat(ethData.priceUsd); // Using ETH price as WETH proxy
@@ -467,12 +467,12 @@ export const toggle_leverage_strategy_pause = createTool({
       "togglePause",
       []
     );
-    
+
     // Read the new pause state
     const paused = await chain_read(env.STRATEGY_LEVERAGE_ADDRESS, StrategyLeverageABI.abi, "paused", []);
-    
-    return { 
-      tx: tx.hash, 
+
+    return {
+      tx: tx.hash,
       paused: paused,
       status: paused ? "paused" : "active"
     };
@@ -494,12 +494,12 @@ export const update_leverage_params = createTool({
       "setLeverageParams",
       [maxDepth, borrowFactor]
     );
-    return { 
-      tx: tx.hash, 
-      newParams: { 
-        maxDepth, 
-        borrowFactor: borrowFactor / 100 + "%" 
-      } 
+    return {
+      tx: tx.hash,
+      newParams: {
+        maxDepth,
+        borrowFactor: borrowFactor / 100 + "%"
+      }
     };
   }
 });
