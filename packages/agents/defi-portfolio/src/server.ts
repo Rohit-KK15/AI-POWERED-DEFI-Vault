@@ -1,7 +1,7 @@
 import { AgentBuilder } from "@iqai/adk";
 import express from "express";
 import cors from "cors";
-import { chatAgent } from "../src/agents/sub-agents/chat-agent/agent";
+import { chatAgent } from "./agents/sub-agents/chat-agent/agent";
 
 const app = express();
 app.use(express.json());
