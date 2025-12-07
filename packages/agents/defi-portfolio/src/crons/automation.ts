@@ -1,6 +1,6 @@
 // src/services/monitoring-service.ts
 
-import cron, { type ScheduledTask} from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import dedent from "dedent";
 import { getRootAgent } from "../agents/agent";
 import type { EnhancedRunner } from "@iqai/adk";
@@ -15,12 +15,14 @@ export class MonitoringService {
   private isRunning = false;
   private monitoringJob: ScheduledTask | null = null;
   private quickCheckJob: ScheduledTask | null = null;
+  private yieldGenerateJob: ScheduledTask | null = null;
 
   constructor(
     private readonly monitoringCronExpr = "*/15 * * * *", // every 15 min
     private readonly quickCheckCronExpr = "*/5 * * * *", // every 5 min
+    private readonly yieldGenerateCronExpr = "*/1 * * * *", // every 1 min
     private readonly telegramRunner: EnhancedRunner,
-  ) {}
+  ) { }
 
   /**
    * Start cron-based monitoring
@@ -35,6 +37,7 @@ export class MonitoringService {
     console.log("🤖 Starting MonitoringService...");
     console.log(`📅 Comprehensive cycle: ${this.monitoringCronExpr}`);
     console.log(`⏱️ Quick price check: ${this.quickCheckCronExpr}`);
+    console.log(`💹 Yield generation: ${this.yieldGenerateCronExpr}`);
 
     // Quick check every 5 minutes
     this.quickCheckJob = cron.schedule(this.quickCheckCronExpr, async () => {
@@ -51,6 +54,15 @@ export class MonitoringService {
         await this.runMonitoringCycle();
       } catch (err) {
         console.error("❌ runMonitoringCycle error:", (err as Error).message);
+      }
+    });
+
+    // Yield generation every 1 minute
+    this.yieldGenerateJob = cron.schedule(this.yieldGenerateCronExpr, async () => {
+      try {
+        await this.yieldGeneration();
+      } catch (err) {
+        console.error("❌ yieldGeneration error:", (err as Error).message);
       }
     });
 
@@ -199,7 +211,29 @@ export class MonitoringService {
       );
     }
   }
+  /**
+   * Yield generation
+   */
+  public async yieldGeneration(): Promise<void> {
+    try {
+      const root = await getRootAgent();
+      const runner = root.runner as EnhancedRunner;
+
+      const result = await runner.ask(
+        "accrue yield to the vault.",
+      );
+
+      console.log(`[${new Date().toISOString()}] Yield Generation →`, result);
+    } catch (err: any) {
+      console.error("yieldGeneration error:", err.message);
+      await this.sendTelegramSummary(
+        `❌ Yield generation failed: ${err.message}`,
+      );
+    }
+  }
 }
+
+
 
 /**
  * Auto-start (matches your original script behavior).
