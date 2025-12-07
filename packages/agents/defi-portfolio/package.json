@@ -34,6 +34,7 @@
 	"homepage": "https://github.com/Rohit-KK15/MetaVault-AI/blob/master/README.md",
 	"dependencies": {
 		"@iqai/adk": "^0.5.7",
+		"@iqai/adk-cli": "^0.3.30",
 		"@openrouter/ai-sdk-provider": "^1.2.8",
 		"cors": "^2.8.5",
 		"dedent": "^1.7.0",
