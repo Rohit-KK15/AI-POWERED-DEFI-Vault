@@ -1,24 +1,35 @@
 {
-  "name": "MetaVault-AI",
+  "name": "metavault-ai",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-    
-  ],
+  "description": "MetaVault AI Monorepo (Agents + Contracts + Frontend)",
   "author": "Rohit_KK",
   "license": "MIT",
   "packageManager": "pnpm@10.18.3",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm -C packages/frontend dev",
+    "dev:agents": "pnpm -C packages/agents/defi-portfolio dev",
+    "dev:all": "concurrently \"pnpm dev:agents\" \"pnpm dev\"",
+    "build": "pnpm -C packages/frontend build && pnpm -C packages/agents/defi-portfolio build",
+    "build:frontend": "pnpm -C packages/frontend build",
+    "build:agents": "pnpm -C packages/agents/defi-portfolio build",
+    "start": "pnpm -C packages/agents/defi-portfolio start",
+    "start:frontend": "pnpm -C packages/frontend start",
+    "start:agents": "pnpm -C packages/agents/defi-portfolio start",
+    "test": "echo \"No tests configured\" && exit 0"
+  },
   "devDependencies": {
+    "@types/node": "^20.11.5",
     "@types/react": "^19.2.6",
-    "hardhat": "^3.0.11"
+    "typescript": "^5.9.3",
+    "hardhat": "^3.0.11",
+    "concurrently": "^9.1.0"
   },
   "dependencies": {
-    "autoprefixer": "^10.4.22",
     "ethers": "^6.15.0",
-    "typescript": "^5.9.3"
+    "autoprefixer": "^10.4.22"
   }
 }
