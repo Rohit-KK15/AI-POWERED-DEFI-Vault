@@ -1,156 +1,223 @@
-/**
- * Automated Monitoring and Management System
- * 
- * This cron job runs the Strategy Sentinel Agent periodically to:
- * - Monitor real LINK and WETH prices
- * - Check leverage strategy state and risk metrics
- * - Adjust leverage parameters based on market conditions
- * - Update target weights between strategies
- * - Rebalance vault when needed
- * - Harvest yields
- * - Pause/unpause strategies based on risk
- */
+// src/services/monitoring-service.ts
 
-import cron from "node-cron";
+import cron, { type ScheduledTask} from "node-cron";
+import dedent from "dedent";
 import { getRootAgent } from "../agents/agent";
-
-// Track last known prices for volatility detection
-let lastLinkPrice = 0;
-let lastWethPrice = 0;
-let lastCheckTime = Date.now();
+import type { EnhancedRunner } from "@iqai/adk";
+import { env } from "../env";
 
 /**
- * Main monitoring function - runs comprehensive checks
+ * Automated monitoring & management service for MetaVault.
+ *
+ * Uses node-cron (not setInterval).
  */
-async function runMonitoringCycle() {
-  const startTime = Date.now();
-  const timestamp = new Date().toISOString();
-  
-  console.log("\n" + "=".repeat(80));
-  console.log(`🔄 Starting monitoring cycle at ${timestamp}`);
-  console.log("=".repeat(80));
+export class MonitoringService {
+  private isRunning = false;
+  private monitoringJob: ScheduledTask | null = null;
+  private quickCheckJob: ScheduledTask | null = null;
 
-  try {
-    const agent = await getRootAgent();
-    const { runner } = agent;
+  constructor(
+    private readonly monitoringCronExpr = "*/15 * * * *", // every 15 min
+    private readonly quickCheckCronExpr = "*/5 * * * *", // every 5 min
+    private readonly telegramRunner: EnhancedRunner,
+  ) {}
 
-    // 1. Price and Market Analysis
-    console.log("\n📊 Step 1: Checking real market prices...");
-    const priceCheck = await runner.ask(
-      "Check real LINK and WETH prices using get_token_prices. Analyze price movements and volatility. " +
-      "If prices have changed significantly (>10%) or are volatile, note this for leverage strategy decisions."
-    );
-    console.log("Price Analysis:", priceCheck);
+  /**
+   * Start cron-based monitoring
+   */
+  start(): void {
+    if (this.isRunning) {
+      console.log("⚠️ MonitoringService already running");
+      return;
+    }
+    this.isRunning = true;
 
-    // 2. Leverage Strategy State Check
-    console.log("\n⚖️ Step 2: Checking leverage strategy state...");
-    const leverageCheck = await runner.ask(
-      "Check the leverage strategy state using get_leverage_strategy_state. " +
-      "Review LTV, borrowed amounts, pause status, and leverage parameters. " +
-      "Assess if the strategy is at risk or needs adjustment."
-    );
-    console.log("Leverage State:", leverageCheck);
+    console.log("🤖 Starting MonitoringService...");
+    console.log(`📅 Comprehensive cycle: ${this.monitoringCronExpr}`);
+    console.log(`⏱️ Quick price check: ${this.quickCheckCronExpr}`);
 
-    // 3. Risk Assessment
-    console.log("\n🚨 Step 3: Assessing liquidation risk...");
-    const riskCheck = await runner.ask(
-      "Check liquidation risk using check_liquidation_risk. " +
-      "If LTV is above 70% or critical, recommend deleveraging or pausing the strategy."
-    );
-    console.log("Risk Assessment:", riskCheck);
+    // Quick check every 5 minutes
+    this.quickCheckJob = cron.schedule(this.quickCheckCronExpr, async () => {
+      try {
+        await this.quickPriceCheck();
+      } catch (err) {
+        console.error("❌ quickPriceCheck error:", (err as Error).message);
+      }
+    });
 
-    // 4. Vault and Strategy States
-    console.log("\n💼 Step 4: Checking vault and strategy states...");
-    const vaultCheck = await runner.ask(
-      "Check vault state using get_vault_state and strategy states using get_strategy_states. " +
-      "Compare current allocations vs target weights. Determine if rebalancing is needed."
-    );
-    console.log("Vault State:", vaultCheck);
+    // Full monitoring every 15 minutes
+    this.monitoringJob = cron.schedule(this.monitoringCronExpr, async () => {
+      try {
+        await this.runMonitoringCycle();
+      } catch (err) {
+        console.error("❌ runMonitoringCycle error:", (err as Error).message);
+      }
+    });
 
-    // 5. Decision Making and Actions
-    console.log("\n🎯 Step 5: Making decisions and taking actions...");
-    const decisionPrompt = `
-      Based on all the data you've gathered:
-      1. If LINK/WETH prices are volatile (>10% change) or dropping rapidly:
-         - Consider pausing leverage strategy (toggle_leverage_strategy_pause)
-         - Or reduce leverage parameters (update_leverage_params: lower maxDepth and borrowFactor)
-      
-      2. If LTV is high (>70%) or liquidation risk is critical:
-         - Execute auto_deleverage to reduce risk
-         - Or pause the leverage strategy
-      
-      3. If current allocations diverge from target weights:
-         - Update target weights (update_strategy_target_weights) based on market conditions
-         - Then call rebalance_vault to execute the reallocation
-      
-      4. If prices are stable and conditions are favorable:
-         - Maintain or slightly increase leverage if safe
-         - Ensure target weights are optimal
-      
-      5. Check if harvest is needed (harvest_strategy)
-      
-      Take appropriate actions based on the current market conditions and risk levels.
-      Explain your reasoning for each action.
-    `;
-    
-    const actions = await runner.ask(decisionPrompt);
-    console.log("Actions Taken:", actions);
+    // run one cycle immediately
+    void this.runMonitoringCycle();
 
-    const duration = Date.now() - startTime;
+    console.log("✅ MonitoringService started");
+  }
+
+  /**
+   * Stop cron jobs
+   */
+  stop(): void {
+    if (!this.isRunning) return;
+    this.isRunning = false;
+
+    if (this.quickCheckJob) this.quickCheckJob.stop();
+    if (this.monitoringJob) this.monitoringJob.stop();
+
+    console.log("🛑 MonitoringService stopped");
+  }
+
+  /**
+   * Send report to Telegram via ADK runner
+   */
+  private async sendTelegramSummary(summary: string): Promise<void> {
+    try {
+      // const root = await getRootAgent();
+      // const { runner } = root;
+
+      await this.telegramRunner.ask(
+        dedent`
+        Send the following monitoring summary to Telegram channel ${env.TELEGRAM_CHANNEL_ID}:
+        
+        ${summary}
+      `,
+      );
+      console.log("📨 Telegram summary sent");
+    } catch (err: any) {
+      console.error("❌ Error sending Telegram summary:", err.message);
+    }
+  }
+
+  /**
+   * Full monitoring cycle with 5 steps
+   */
+  public async runMonitoringCycle(): Promise<void> {
+    const timestamp = new Date().toISOString();
     console.log("\n" + "=".repeat(80));
-    console.log(`✅ Monitoring cycle completed in ${duration}ms`);
-    console.log("=".repeat(80) + "\n");
+    console.log(`🔄 Running monitoring cycle @ ${timestamp}`);
+    console.log("=".repeat(80));
 
-  } catch (error: any) {
-    console.error("\n❌ Error in monitoring cycle:", error.message);
-    console.error("Stack:", error.stack);
-    console.log("=".repeat(80) + "\n");
+    try {
+      const root = await getRootAgent();
+      const runner = root.runner as EnhancedRunner;
+
+      // 1. Market prices
+      console.log("📊 Step 1: Market prices...");
+      const priceCheck = await runner.ask(
+        "Check real LINK and WETH prices using get_token_prices and evaluate volatility (>10%).",
+      );
+
+      // 2. Leverage strategy
+      console.log("⚖️ Step 2: Leverage strategy...");
+      const leverageCheck = await runner.ask(
+        "Use get_leverage_strategy_state to evaluate LTV, borrow amounts, and pause status.",
+      );
+
+      // 3. Risk assessment
+      console.log("🚨 Step 3: Liquidation risk...");
+      const riskCheck = await runner.ask(
+        "Check liquidation risk using check_liquidation_risk and identify if deleveraging is required.",
+      );
+
+      // 4. Vault & strategies
+      console.log("💼 Step 4: Vault state...");
+      const vaultCheck = await runner.ask(
+        "Fetch get_vault_state and get_strategy_states to determine if rebalancing is required.",
+      );
+
+      // 5. Actions to take
+      console.log("🎯 Step 5: Decision making...");
+      const actions = await runner.ask(
+        dedent`
+        Based on price, strategy, and risk:
+        - Suggest pausing or resuming leverage
+        - Suggest updating leverage parameters
+        - Suggest rebalancing if allocations diverge
+        - Suggest harvesting yields
+        Provide reasoning and simulate transactions before recommending.
+        `,
+      );
+
+      const summary = dedent`
+        🤖 *MetaVault Monitoring Report*
+        🕒 ${timestamp}
+
+        📊 *Price Analysis:*  
+        ${priceCheck}
+
+        ⚖️ *Leverage State:*  
+        ${leverageCheck}
+
+        🚨 *Risk Assessment:*  
+        ${riskCheck}
+
+        💼 *Vault State:*  
+        ${vaultCheck}
+
+        🎯 *Actions:*  
+        ${actions}
+      `;
+
+      await this.sendTelegramSummary(summary);
+
+      console.log("✅ Monitoring cycle finished\n");
+    } catch (err: any) {
+      console.error("❌ Monitoring cycle error:", err.message);
+
+      const errorReport = dedent`
+        ❌ *Monitoring Error*
+        🕒 ${new Date().toISOString()}
+        Error: ${err.message}
+      `;
+      await this.sendTelegramSummary(errorReport);
+    }
+  }
+
+  /**
+   * Fast market check
+   */
+  public async quickPriceCheck(): Promise<void> {
+    try {
+      const root = await getRootAgent();
+      const runner = root.runner as EnhancedRunner;
+
+      const result = await runner.ask(
+        "Quick check: Get LINK and WETH prices and flag >15% movement.",
+      );
+
+      console.log(`[${new Date().toISOString()}] Quick Price Check →`, result);
+    } catch (err: any) {
+      console.error("quickPriceCheck error:", err.message);
+      await this.sendTelegramSummary(
+        `❌ Quick price check failed: ${err.message}`,
+      );
+    }
   }
 }
 
 /**
- * Quick price check - runs more frequently
+ * Auto-start (matches your original script behavior).
+ * Remove this if you want manual control.
  */
-async function quickPriceCheck() {
-  try {
-    const agent = await getRootAgent();
-    const { runner } = agent;
-    
-    const result = await runner.ask(
-      "Quick check: Get current LINK and WETH prices. " +
-      "If prices changed >15% since last check, flag for immediate review."
-    );
-    
-    console.log(`[${new Date().toISOString()}] Quick price check:`, result);
-  } catch (error: any) {
-    console.error("Quick price check error:", error.message);
-  }
-}
+// const service = new MonitoringService();
+// service.start();
 
-// Schedule comprehensive monitoring every 15 minutes
-// Cron format: minute hour day month day-of-week
-// "*/15 * * * *" = every 15 minutes
-cron.schedule("*/15 * * * *", () => {
-  runMonitoringCycle();
-});
+// graceful shutdown
+// process.on("SIGINT", () => {
+//   console.log("👋 Stopping MonitoringService...");
+//   service.stop();
+//   process.exit(0);
+// });
+// process.on("SIGTERM", () => {
+//   console.log("👋 Stopping MonitoringService...");
+//   service.stop();
+//   process.exit(0);
+// });
 
-// Schedule quick price checks every 5 minutes for rapid response
-cron.schedule("*/5 * * * *", () => {
-  quickPriceCheck();
-});
-
-// Run comprehensive check on startup
-console.log("🤖 Automated monitoring system starting...");
-console.log("📅 Schedule: Comprehensive checks every 15 minutes, quick price checks every 5 minutes");
-runMonitoringCycle();
-
-// Keep the process alive
-process.on("SIGINT", () => {
-  console.log("\n👋 Shutting down monitoring system...");
-  process.exit(0);
-});
-
-process.on("SIGTERM", () => {
-  console.log("\n👋 Shutting down monitoring system...");
-  process.exit(0);
-});
+export default MonitoringService;
