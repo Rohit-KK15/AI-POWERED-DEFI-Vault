@@ -109,6 +109,7 @@ export async function getStrategySentinelAgent() {
               * Stable markets → can maintain or slightly increase
 
             **TARGET WEIGHT MANAGEMENT:**
+            - The Target Weights are leverage: 80% and AAVE: 20%
             - Monitor current vs target allocations for each strategy
             - Adjust target weights using update_strategy_target_weights when:
               * Market conditions favor one strategy over another

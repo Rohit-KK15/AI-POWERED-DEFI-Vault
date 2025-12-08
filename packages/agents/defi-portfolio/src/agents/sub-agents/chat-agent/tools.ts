@@ -82,28 +82,24 @@ export const get_wallet_link_balance = createTool({
  */
 export const get_public_vault_info = createTool({
   name: "get_public_vault_info",
-  description: "Gets public vault information including total assets, total supply, and total managed assets. This is public information available to all users.",
+  description: "Gets public vault information including total managed assets and total supply. This is public information available to all users.",
   fn: async () => {
     const [
-      totalAssets,
-      totalSupply,
       totalManaged,
+      totalSupply,
     ] = await Promise.all([
-      chain_read(env.VAULT_ADDRESS, VaultABI.abi, "totalAssets", []),
-      chain_read(env.VAULT_ADDRESS, VaultABI.abi, "totalSupply", []),
       chain_read(env.VAULT_ADDRESS, VaultABI.abi, "totalManagedAssets", []),
+      chain_read(env.VAULT_ADDRESS, VaultABI.abi, "totalSupply", []),
     ]);
 
     const raw = {
-      totalAssets: totalAssets.toString(),
-      totalSupply: totalSupply.toString(),
       totalManaged: totalManaged.toString(),
+      totalSupply: totalSupply.toString(),
     };
 
     const human = {
-      totalAssets: format18(raw.totalAssets),
-      totalSupply: format18(totalSupply),
       totalManaged: format18(raw.totalManaged),
+      totalSupply: format18(totalSupply),
     };
 
     return toStringBN({ raw, human });
