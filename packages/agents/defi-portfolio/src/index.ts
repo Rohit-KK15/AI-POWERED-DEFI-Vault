@@ -16,20 +16,18 @@ async function main() {
 		const samplingHandler = createSamplingHandler(runner.ask);
 
 		// Initialize Telegram toolset
-		const { runner: telegramRunner } = await createTelegramAgent(
-			createSamplingHandler(runner.ask),
-		);
+		const { runner: telegramRunner } = await createTelegramAgent(samplingHandler);
 
 		console.log("✅ Telegram bot agent initialized successfully!");
 		console.log("🚀 Bot is now running and ready to receive messages...");
 
 		// Pass required arguments to MonitoringService constructor
 		// (Assuming runner.ask is the handler function and "telegram" is a label/context. Modify as needed.)
-		const autoService = new MonitoringService("*/15 * * * *", "*/5 * * * *", "*/1 * * * *", telegramRunner);
+		const autoService = new MonitoringService("0 */1 * * *", "*/2 * * * *", telegramRunner);
 		autoService.start();
 
 		// START EXPRESS CHAT SERVER
-		await startChatServer();  
+		await startChatServer();
 		console.log("🌐 ChatAgent REST server started");
 
 		// Keep the process running
