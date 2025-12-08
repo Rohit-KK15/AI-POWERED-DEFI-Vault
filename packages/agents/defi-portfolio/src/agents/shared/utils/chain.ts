@@ -14,15 +14,38 @@ export async function chain_read(contract: string, abi: any, method: string, arg
 export async function chain_write(contract: string, abi: any, method: string, args: any[] = []) {
   const c = new ethers.Contract(contract, abi, signer);
 
-  const tx = await c[method](...args);
+  // Estimate gas with 20–30% buffer
+  let gasLimit;
+  try {
+    const estimate = await c[method].estimateGas(...args);
+    gasLimit = estimate * 12n / 10n; // +20%
+  } catch (err) {
+    console.error("Gas estimation error:", err);
+    throw err;
+  }
+
+  // Get current network fees
+  const feeData = await provider.getFeeData();
+
+  const tx = await c[method](...args, {
+    gasLimit,
+    maxFeePerGas: feeData.maxFeePerGas,
+    maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+  });
+
+  // Wait for confirmation — catches revert reasons
+  const receipt = await tx.wait();
 
   return {
     hash: tx.hash,
     from: tx.from,
     to: tx.to,
-    nonce: tx.nonce
+    nonce: tx.nonce,
+    status: receipt.status,
+    gasUsed: receipt.gasUsed.toString(),
   };
 }
+
 
 
 export function toStringBN(value: any): any {
