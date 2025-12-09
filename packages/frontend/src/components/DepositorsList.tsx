@@ -97,7 +97,7 @@ export function DepositorsList() {
         fetchHolders();
 
         // Refresh every 30s
-        const interval = setInterval(fetchHolders, 30000);
+        const interval = setInterval(fetchHolders, 300000);
         return () => clearInterval(interval);
     }, [publicClient]);
 
